@@ -116,14 +116,14 @@ int main(void)
   ADS1015(&i2c, &hi2c1, ADS_ADDR_GND); // Or ADS1015(&i2c, &hi2c1, ADS_ADDR_GND);
   ADSsetGain(&i2c, GAIN_TWOTHIRDS);
   HD44780_Init(4);
-
+  HD44780_Clear();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  	HD44780_Clear();
+	    HD44780_Clear();
 	  	HD44780_SetCursor(0,0);
 	    HD44780_PrintStr("Duty Cycle 1: ");
 	  	HD44780_SetCursor(0,1);
@@ -135,7 +135,7 @@ int main(void)
 	  	      	  TIM8->CCR1 = Sweep_DC;
 	  	      	  Sweep_DC += 1;
 	  	      	  itoa(Sweep_DC, duty1Num, 10);
-	  	      	  HD44780_SetCursor(15,0);
+	  	      	  HD44780_SetCursor(13,0);
 	  	          HD44780_PrintStr(duty1Num);
 	  	      	  HAL_Delay(20);
 	  	      	}
@@ -145,7 +145,7 @@ int main(void)
 	  	      	  TIM8->CCR1 = Sweep_DC;
 	  	      	  Sweep_DC -= 1;
 	  	      	  itoa(Sweep_DC, duty2Num, 10);
-	  	      	  HD44780_SetCursor(15,0);
+	  	      	  HD44780_SetCursor(13,1);
 	  	          HD44780_PrintStr(duty2Num);
 	  	      	  HAL_Delay(20);
 	  	      	}
@@ -156,8 +156,10 @@ int main(void)
 
 	  	  itoa(millivolt, snum, 10);
 
-	  	  HD44780_Clear();
-	  	  HD44780_SetCursor(0,0);
+	  	  //HD44780_Clear();
+	  	  HD44780_SetCursor(0,3);
+	  	  HD44780_PrintStr("ADC Reading:");
+	  	  HD44780_SetCursor(13,3);
 	  	  HD44780_PrintStr(snum);
 
 	  	  HAL_Delay(100);
