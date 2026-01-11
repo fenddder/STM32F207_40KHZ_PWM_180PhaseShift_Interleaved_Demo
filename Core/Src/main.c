@@ -21,7 +21,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "ADS1015_ADS1115.h"
+#include "liquidcrystal_i2c.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -40,6 +41,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+I2C_HandleTypeDef hi2c1;
+
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim8;
 
@@ -52,6 +55,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM8_Init(void);
+static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -92,31 +96,73 @@ int main(void)
   MX_GPIO_Init();
   MX_TIM1_Init();
   MX_TIM8_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
+  TIM1->CCR1 = 0;
+  TIM8->CCR1 = 0;
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   HAL_TIM_OC_Start(&htim1, TIM_CHANNEL_2);
   HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_1);
+
+
+  ADS1xx5_I2C i2c;
+  int16_t adc1;
+
+  int millivolt;
+  char snum[7];
+  char duty1Num[4];
+  char duty2Num[4];
+
+  ADS1015(&i2c, &hi2c1, ADS_ADDR_GND); // Or ADS1015(&i2c, &hi2c1, ADS_ADDR_GND);
+  ADSsetGain(&i2c, GAIN_TWOTHIRDS);
+  HD44780_Init(4);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    /* USER CODE END WHILE */
+	  	HD44780_Clear();
+	  	HD44780_SetCursor(0,0);
+	    HD44780_PrintStr("Duty Cycle 1: ");
+	  	HD44780_SetCursor(0,1);
+	    HD44780_PrintStr("Duty Cycle 2: ");
+
 	  while(Sweep_DC < 3000)
-	      	{
-	      	  TIM1->CCR1 = Sweep_DC;
-	      	  TIM8->CCR1 = Sweep_DC;
-	      	  Sweep_DC += 1;
-	      	  HAL_Delay(10);
-	      	}
-	  while(Sweep_DC > 0)
-	      	{
-	      	  TIM1->CCR1 = Sweep_DC;
-	      	  TIM8->CCR1 = Sweep_DC;
-	      	  Sweep_DC -= 1;
-	      	  HAL_Delay(10);
-	      	}
+	  	      	{
+	  	      	  TIM1->CCR1 = Sweep_DC;
+	  	      	  TIM8->CCR1 = Sweep_DC;
+	  	      	  Sweep_DC += 1;
+	  	      	  itoa(Sweep_DC, duty1Num, 10);
+	  	      	  HD44780_SetCursor(15,0);
+	  	          HD44780_PrintStr(duty1Num);
+	  	      	  HAL_Delay(20);
+	  	      	}
+	  	  while(Sweep_DC > 0)
+	  	      	{
+	  	      	  TIM1->CCR1 = Sweep_DC;
+	  	      	  TIM8->CCR1 = Sweep_DC;
+	  	      	  Sweep_DC -= 1;
+	  	      	  itoa(Sweep_DC, duty2Num, 10);
+	  	      	  HD44780_SetCursor(15,0);
+	  	          HD44780_PrintStr(duty2Num);
+	  	      	  HAL_Delay(20);
+	  	      	}
+
+	  	  adc1 = ADSreadADC_SingleEnded(&i2c, 1);
+	  	  millivolt = adc1 * 4.096 * 1000 / 32768;
+	  	  millivolt = millivolt - 0; // Calibrate at 100mV
+
+	  	  itoa(millivolt, snum, 10);
+
+	  	  HD44780_Clear();
+	  	  HD44780_SetCursor(0,0);
+	  	  HD44780_PrintStr(snum);
+
+	  	  HAL_Delay(100);
+    /* USER CODE END WHILE */
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -160,6 +206,40 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief I2C1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C1_Init(void)
+{
+
+  /* USER CODE BEGIN I2C1_Init 0 */
+
+  /* USER CODE END I2C1_Init 0 */
+
+  /* USER CODE BEGIN I2C1_Init 1 */
+
+  /* USER CODE END I2C1_Init 1 */
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.ClockSpeed = 100000;
+  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C1_Init 2 */
+
+  /* USER CODE END I2C1_Init 2 */
+
 }
 
 /**
@@ -300,7 +380,7 @@ static void MX_TIM8_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 1500;
+  sConfigOC.Pulse = 3000;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
